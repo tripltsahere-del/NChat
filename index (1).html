@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NChat">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAACR0lEQVR42u3d240CMRBFQecfWwe1GfCzdr+mjkiAq2IAS6M5R5IkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZLuFzdeX3vvfMABx4d9wOHLBY4GOAIOONYMB0c2joADjgXzwVGDI+CAY/SIcFTiCDjggAOObVPCUY8j4IBj3KBwdMERcMAxaFY4euEIOOAYMS4cHXEEHHA0nxgOOOAYiCPggKPt0HA8n2muDzgyZhrqA46kmSb6gCNvpnE+4EidaZYPOLJnGuQDjnk4Ao6tOA4ccPyeaYQPOMpm6u8DjsqZmvuAo3imzj7gqJ+prQ84WszU0wccXWZq6AOORjN18wHHKhwBx1YcBw44pviAo+NMTXzA0XSmDj7g6DtTuQ84Ws9U6wOO7jMV+oBjwExVPuCYMVOJDzi+giPg2IrjwAFHKx9wDJsp0wcc82ZK8wHHyJlyfMAxdaYEH3AM/gy99gHH7AvsUx9wjP/2fecDDjju3/ANx4bb4eHYj+ORDzj2/OO/7gOOVcdBd33Ase2s8KIPOBYeJN/yAcdCHLd8wLETx63zDzh24jhwwAEHHJN8wLH/OX5w7Mdx4ICjjw84PvT4cTj24zhwwFHuA47BM8EBR5kPOOCAYymOAwccJT7gWDITHHCk+oBj1UxwwJHkA46FM8EBx3MfcKydCQ44XDzgcPGAgw84+IDDjw84HHvA8XUcAQccH/UBBx9wvMURcMDh/60kSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZIkSZL+0R+DLfJVUq7/KAAAAABJRU5ErkJggg==">
+<title>NChat</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{background:#000}
+body{color:#00cc00;font:12px/1.4 Verdana,Arial,sans-serif;max-width:900px;margin:0 auto;padding:8px}
+a{color:#00cc00;text-decoration:none;cursor:pointer}a:hover{color:#00cc00;text-decoration:underline}
+h1{font:bold 22px Verdana,Arial,sans-serif;margin:2px 0}h1 a{color:#00cc00}
+.bar{border-top:1px solid #333;border-bottom:1px solid #333;padding:4px 0;margin:6px 0}
+.tabs{display:flex;flex-wrap:nowrap;gap:2px;overflow-x:auto}
+.tabs a{flex:0 0 auto;white-space:nowrap;padding:3px 7px;border:1px solid #333;border-bottom:0;background:#111}
+.tabs a.on{background:#1a1a1a;border-color:#888;font-weight:bold}
+@media(max-width:600px){.tabs a{font-size:10px;padding:3px 4px}}
+input,textarea,select,button{background:#111;color:#00cc00;border:1px solid #444;font:12px Verdana,Arial,sans-serif;padding:3px;max-width:100%}::placeholder{color:#007700}
+button{cursor:pointer}button:hover{border-color:#aaa}textarea{width:98%;height:70px}
+.row{border:1px solid #333;padding:4px 6px;margin:4px 0}.row:hover{background:#0a0a0a}
+.m{color:#00cc00;font-size:11px}.name{color:#00cc00;font-weight:bold}
+.post{border:1px solid #333;background:#0a0a0a;padding:6px;margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#msg{min-height:16px;padding:2px 0;font-size:11px}#msg.ok{color:#00cc00}#msg.err{color:#f55;font-weight:bold}
+#top{display:flex;justify-content:space-between;align-items:center}
+#bm{position:relative}#bm summary{cursor:pointer;list-style:none}#bm summary::-webkit-details-marker{display:none}
+#boards{position:absolute;right:0;z-index:5;background:#000;border:1px solid #333;padding:4px 8px;min-width:150px}#boards a{display:block;padding:2px 0}
+#sf{margin:4px 0}
+</style></head><body>
+<script id="logic">
+const BOARDS=["school","memes","pics","gaming","uhh","random"];
+const TABS=[["top","Top Threads"],["questions","Top Questions"],["new","New"],["viewed","Most Viewed"],["popular","Popular"],["week","Top This Week"],["today","Top Today"]];
+
+const cleanBoard=b=>String(b||"").trim().replace(/^\/+/,"").toLowerCase();
+const validBoard=b=>/^[a-z0-9]{1,20}$/.test(b)&&b!=="all";
+const boards=()=>{const x=new Set(load().threads.map(t=>t.board));return[...BOARDS,...[...x].filter(b=>!BOARDS.includes(b)).sort()]}; // defaults + any board people created
+const KEY="nchat:v1";let memory=null;
+const persistent=(()=>{try{localStorage.setItem("nchat:t","1");localStorage.removeItem("nchat:t");return true}catch(e){return false}})();
+const STORE={get:()=>persistent?localStorage.getItem(KEY):memory,set:s=>{if(persistent)localStorage.setItem(KEY,s);else memory=s}};
+function load(){try{const s=STORE.get();if(s)return JSON.parse(s)}catch(e){}return{threads:[],replies:[],next:1}}
+function save(db){const s=JSON.stringify(db);STORE.set(s);if(STORE.get()!==s)throw new Error("write did not persist")}
+
+const clean=(s,n)=>String(s||"").replace(/[\u0000-\u0008\u000b-\u001f]/g,"").trim().slice(0,n);
+const anon=()=>"Anon"+(1000+Math.floor(Math.random()*9000));
+function cleanName(a){a=clean(a,200);if(!a)return anon();const n=Array.from(a).length;if(n<3||n>15)throw new Error("Names must be 3 to 15 characters.");return a}
+const norm=s=>String(s||"").normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+const nextId=db=>{const id=Math.max(db.next||1,1+Math.max(0,...db.threads.map(t=>t.id),...db.replies.map(r=>r.id)));db.next=id+1;return id}; // always a fresh, never-reused ID
+const similar=title=>{const n=norm(title);return n?load().threads.filter(t=>norm(t.title)===n).map(t=>t.id):[]}; // notice only, never blocks
+function submitThread(board,title,body,author){
+  board=cleanBoard(board);title=clean(title,120);body=clean(body,4000);if(!board||!title||!body)throw new Error("Board, title and text are required");
+  if(!validBoard(board))throw new Error("That board name isn't allowed. Use letters and numbers only, up to 20.");
+  const db=load(),id=nextId(db);db.threads.push({id,board,title,body,author:cleanName(author),created:Date.now()/1000,views:0});save(db);
+  return{id}}
+function submitReply(id,body,author){
+  body=clean(body,4000);if(!body)throw new Error("Reply is empty");const db=load();
+  if(!db.threads.some(t=>t.id===id))throw new Error("Thread not found");
+  db.replies.push({id:nextId(db),threadId:id,body,author:cleanName(author),created:Date.now()/1000});save(db);return{}}
+function feed(tab,board,q){
+  const db=load(),now=Date.now()/1000;
+  let a=db.threads.map(t=>({...t,replies:db.replies.filter(r=>r.threadId===t.id).length}));
+  if(board)a=a.filter(t=>t.board===board);
+  if(q){const ql=q.toLowerCase();a=a.filter(t=>(t.title+" "+t.body).toLowerCase().includes(ql)||db.replies.some(r=>r.threadId===t.id&&r.body.toLowerCase().includes(ql)))}
+  if(tab==="questions")a=a.filter(t=>t.title.endsWith("?"));
+  if(tab==="week")a=a.filter(t=>t.created>now-604800);
+  if(tab==="today")a=a.filter(t=>t.created>now-86400);
+  const sc={top:t=>t.views+3*t.replies,questions:t=>t.replies,new:t=>t.created,viewed:t=>t.views}[tab]||(t=>t.views+5*t.replies);
+  return a.sort((x,y)=>sc(y)-sc(x)||y.id-x.id).slice(0,50)}
+function getThread(id){const db=load(),t=db.threads.find(x=>x.id===id);if(!t)return null;
+  t.views++;try{save(db)}catch(e){}return{...t,replies:db.replies.filter(r=>r.threadId===id)}}
+</script>
+<div id="top"><h1><a href="#">NChat</a></h1><details id="bm"><summary><a>Boards ▾</a></summary><div id="boards"></div></details></div>
+<form id="sf"><input id="q" placeholder="search threads and replies" size="28"> <button>Search</button></form>
+<div class="tabs" id="tabs"></div>
+<div id="msg"></div><div id="app"></div>
+<script>
+const $=s=>document.querySelector(s),app=$("#app"),msg=$("#msg");
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const when=t=>new Date(t*1000).toLocaleString();
+const say=(t,ok)=>{msg.textContent=t||"";msg.className=ok?"ok":"err"};
+let query="";
+const menu=()=>{const c={};load().threads.forEach(t=>c[t.board]=(c[t.board]||0)+1);$("#boards").innerHTML=boards().map(b=>`<a href="#${esc(b)}">/${esc(b)} (${c[b]||0})</a>`).join("")};
+$("#boards").onclick=()=>{$("#bm").open=false};
+const drawTabs=(board,tab)=>{$("#tabs").innerHTML=TABS.map(([k,n])=>`<a href="#${board||"all"}.${k}" class="${k===tab?"on":""}">${n}</a>`).join("")};
+$("#sf").onsubmit=e=>{e.preventDefault();query=$("#q").value.trim();if(/^#thread-/.test(location.hash))location.hash="all.top";else route()};
+addEventListener("hashchange",()=>{say("");$("#bm").open=false;route()});
+function route(){
+  const h=location.hash.slice(1),m=h.match(/^thread-(\d+)$/);
+  menu();
+  if(m){drawTabs("","");return thread(+m[1])}
+  const [b,t]=h.split("."),board=validBoard(b)?b:"",tab=TABS.some(x=>x[0]===t)?t:"top";
+  drawTabs(board,tab);list(board,tab)}
+function list(board,tab){
+  const rows=feed(tab,board,query).map(t=>`<div class="row"><a href="#thread-${t.id}"><b>${esc(t.title)}</b></a>
+    <div class="m">/${esc(t.board)} · No.${t.id} · <span class="name">${esc(t.author)}</span> · ${when(t.created)} · ${t.replies} replies · ${t.views} views</div></div>`).join("");
+  app.innerHTML=`<div class="bar" style="margin-top:6px">${board?"/"+board:"All boards"}${query?` · results for “${esc(query)}” <a id="clr">clear</a>`:""}</div>
+  ${rows||'<div class="m">No threads.</div>'}
+  <div class="bar"><b>New thread</b><form id="nf">/<input name="board" value="${esc(board)}" placeholder="board name" size="12" required> 
+  <input name="author" placeholder="name (3-15 chars, optional)" size="22" minlength="3" maxlength="15"><br><input name="title" placeholder="title" size="60" required><br><div id="sim" class="m"></div>
+  <textarea name="body" placeholder="text" required></textarea><br><button>Post</button></form></div>`;
+  if(query)$("#clr").onclick=()=>{query="";$("#q").value="";route()};
+  $("#nf").onsubmit=e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+    try{const r=submitThread(f.board,f.title,f.body,f.author);location.hash="thread-"+r.id}
+    catch(err){say(err.message)}};
+  $("#nf [name=title]").oninput=e=>{const s=similar(e.target.value);$("#sim").innerHTML=s.length?"Similar threads exist: "+s.slice(0,5).map(i=>`<a href="#thread-${i}">No.${i}</a>`).join(", ")+(s.length>5?" ...":"")+" (you can still post)":""};
+}
+function thread(id){
+  const j=getThread(id);
+  if(!j){app.innerHTML='<div class="post">Thread not found. It may have been deleted.</div>';return}
+  app.innerHTML=`<div class="m"><a href="#${j.board}">/${esc(j.board)}</a></div><h3>${esc(j.title)}</h3>
+  <div class="post"><span class="name">${esc(j.author)}</span> <span class="m">${when(j.created)} · No.${j.id} · ${j.replies.length} replies</span>\n${esc(j.body)}</div>
+  ${j.replies.map(r=>`<div class="post"><span class="name">${esc(r.author)}</span> <span class="m">${when(r.created)}</span>\n${esc(r.body)}</div>`).join("")}
+  <form id="rf"><input name="author" placeholder="name (3-15 chars, optional)" size="22" minlength="3" maxlength="15"><br><textarea name="body" placeholder="reply" required></textarea><br><button>Reply</button></form>`;
+  $("#rf").onsubmit=e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target));
+    try{submitReply(id,f.body,f.author);thread(id);say("Reply posted.",true)}
+    catch(err){say(err.message)}}}
+
+if(!persistent)say("Browser storage is unavailable here, so posts last only until you close this tab.");
+route();
+</script></body></html>
